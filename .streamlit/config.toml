@@ -1,0 +1,6 @@
+[server]
+maxUploadSize = 50          # MB; royalty files are typically <5 MB
+
+[theme]
+base = "light"
+primaryColor = "#0F766E"     # Teal — adjust to brand

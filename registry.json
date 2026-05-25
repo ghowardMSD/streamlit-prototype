@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "comment": "Agency catalog for Zuma royalty normalization. Each agency entry has: identify (how to match a file), loader (which function to call), and config (per-agency settings). Edit this file to add a new agency or tweak field mappings.",
+  "agencies": [
+    {
+      "name": "DPA",
+      "loader": "generic",
+      "identify": {
+        "filename_patterns": ["DPA.csv", "DPA_*.csv", "dpa_*.csv"],
+        "header_fingerprint": ["PA Number", "Fiscal Year", "Originator ID", "Roy.Gros Amount"]
+      },
+      "config": {
+        "format": "csv",
+        "csv_options": {"sep": ";", "encoding": "utf-8"},
+        "european_decimals": true,
+        "mapping": {
+          "INVOICE NUMBER":       {"field": "Invoice"},
+          "COUNTRY":              {"field": "Country"},
+          "CLIENT":               {"field": "Customer", "transform": "rstrip_comma_strip"},
+          "ZUMA FILE NUMBER":     {"field": "ext. pict.numb."},
+          "ORIGINAL FILE NUMBER": {"value": ""},
+          "DESCRIPTION":          {"field": "Title"},
+          "PHOTOGRAPHER":         {"field": "Photographer"},
+          "PHOTOG CODE":          {"derive": "photog_code_from:Photographer"},
+          "FOREIGN CURRENCY":     {"field": "Currency"},
+          "EXCHANGE RATE":        {"value": "@EUR_USD"},
+          "AMOUNT IN USD":        {"field": "Roy.Gros Amount", "number": true, "times_rate": true}
+        }
+      }
+    },
+    {
+      "name": "IMAGO",
+      "loader": "imago",
+      "identify": {
+        "filename_patterns": ["IMAGO.xlsx", "imago_*.xlsx"],
+        "header_fingerprint": ["id (intern)", "credit", "IMAGO image number", "amount EUR"]
+      },
+      "config": {
+        "sheet": "Worksheet",
+        "default_country": "Germany",
+        "default_currency": "EUR"
+      }
+    },
+    {
+      "name": "CORDON",
+      "loader": "cordon",
+      "identify": {
+        "filename_patterns": ["CORDON.xlsx", "Cordon*.xlsx", "cordon_*.xlsx"],
+        "header_fingerprint": ["CORDON PRESS S.L."]
+      },
+      "config": {
+        "default_country": "Spain",
+        "default_currency": "EUR",
+        "default_client": "CORDON PRESS S.L."
+      }
+    },
+    {
+      "name": "ZUMA Royalty Output",
+      "loader": "zuma_output",
+      "identify": {
+        "filename_patterns": ["ZUMA Royalty Output.xls", "ZUMA Royalty Output*.xls*"],
+        "header_fingerprint": ["Inv #", "ZUMA filename", "License Amount", "YOURS"]
+      },
+      "config": {
+        "header_row": 1,
+        "default_currency": "USD",
+        "exchange_rate": 1.0
+      }
+    },
+    {
+      "name": "ABACA",
+      "loader": "abaca",
+      "identify": {
+        "filename_patterns": ["ABACA.pdf", "abaca_*.pdf", "ABACA_*.pdf"],
+        "header_fingerprint": null
+      },
+      "config": {
+        "default_country": "France",
+        "default_currency": "EUR",
+        "default_client": "ABACA",
+        "default_commission_pct": 60.0
+      }
+    },
+    {
+      "name": "REA",
+      "loader": "rea",
+      "identify": {
+        "filename_patterns": ["REA.pdf", "rea_*.pdf", "REA_*.pdf"],
+        "header_fingerprint": null
+      },
+      "config": {
+        "default_country": "France",
+        "default_currency": "EUR"
+      }
+    }
+  ]
+}
