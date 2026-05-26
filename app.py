@@ -80,7 +80,7 @@ def df_to_xlsx_bytes(df: pd.DataFrame) -> bytes:
 if not check_password():
     st.stop()
 
-st.title("Royalty Normalize")
+st.title("Normalize Royalties")
 st.caption(
     "Drop royalty/usage statements from your resellers (CSV, XLSX, PDF). "
     "We identify the agency format, parse the rows, and produce a normalized "
@@ -191,5 +191,5 @@ st.divider()
 st.caption(
     "This is a working prototype. Production would add: per-customer accounts, "
     "your own target schema, learning new agency formats automatically, and "
-    "an audit trail. Schedule a call to discuss."
+    "an audit trail."
 )
