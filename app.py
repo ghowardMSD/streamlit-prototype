@@ -23,7 +23,7 @@ from normalize import TARGET_COLS, identify_file, run_loader
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Royalty Normalize",
+    page_title="Normalize Royalties",
     page_icon="📊",
     layout="centered",
 )
