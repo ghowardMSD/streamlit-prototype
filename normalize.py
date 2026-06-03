@@ -21,6 +21,8 @@ from typing import Any
 import pandas as pd
 import pdfplumber
 
+ZUMA_FN_RE = re.compile(r"(\d{8}_[a-z]{3}_[a-z]\d{1,3}_\d+(?:\.\w+)?)", re.IGNORECASE)
+
 TARGET_COLS = [
     "INVOICE NUMBER", "COUNTRY", "CLIENT", "ZUMA FILE NUMBER",
     "ORIGINAL FILE NUMBER", "DESCRIPTION", "PHOTOGRAPHER", "PHOTOG CODE",
@@ -116,6 +118,9 @@ def _apply_rule(rule, df, rate):
         d = rule["derive"]
         if d.startswith("photog_code_from:"):
             return df[d.split(":", 1)[1]].map(photog_code)
+        if d.startswith("zuma_file_number_from:"):
+            col = d.split(":", 1)[1]
+            return df[col].astype(str).str.extract(ZUMA_FN_RE.pattern, flags=re.IGNORECASE, expand=False).fillna("")
     raise ValueError(f"unknown rule: {rule}")
 
 
@@ -129,11 +134,10 @@ def load_imago(buf, fname, config, rate):
     out["COUNTRY"] = config.get("default_country", "Germany")
     out["CLIENT"] = df["client"]
 
-    zp = re.compile(r"(\d{8}_[a-z]{3}_[a-z]\d{1,3}_\d+(?:\.\w+)?)", re.IGNORECASE)
     def find_zuma(ref, desc, img):
         for src in (ref, desc):
             if isinstance(src, str) and src.strip():
-                m = zp.search(src)
+                m = ZUMA_FN_RE.search(src)
                 if m: return m.group(1)
         if isinstance(ref, str) and ref.strip():
             return re.sub(r"\s*Copyright:.*$", "", ref).strip(" -")
@@ -174,7 +178,7 @@ def load_cordon(buf, fname, config, rate):
     out["INVOICE NUMBER"] = data["InvCode"].astype(str).str.replace(".0", "", regex=False)
     out["COUNTRY"] = config.get("default_country", "Spain")
     out["CLIENT"] = config.get("default_client", "CORDON PRESS S.L.")
-    out["ZUMA FILE NUMBER"] = data["Description"].astype(str).str.replace(r"\s*-\s*$", "", regex=True).str.strip()
+    out["ZUMA FILE NUMBER"] = data["Description"].astype(str).str.extract(ZUMA_FN_RE.pattern, flags=re.IGNORECASE, expand=False).fillna("")
     out["ORIGINAL FILE NUMBER"] = ""
     out["DESCRIPTION"] = ""
     out["PHOTOGRAPHER"] = ""

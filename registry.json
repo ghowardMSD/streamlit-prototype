@@ -17,7 +17,7 @@
           "INVOICE NUMBER":       {"field": "Invoice"},
           "COUNTRY":              {"field": "Country"},
           "CLIENT":               {"field": "Customer", "transform": "rstrip_comma_strip"},
-          "ZUMA FILE NUMBER":     {"field": "ext. pict.numb."},
+          "ZUMA FILE NUMBER":     {"derive": "zuma_file_number_from:ext. pict.numb."},
           "ORIGINAL FILE NUMBER": {"value": ""},
           "DESCRIPTION":          {"field": "Title"},
           "PHOTOGRAPHER":         {"field": "Photographer"},
