@@ -19,6 +19,8 @@ import streamlit as st
 
 from normalize import TARGET_COLS, identify_file, run_loader
 
+VERSION = "1.1"
+
 # ---------------------------------------------------------------------------
 # Page config
 # ---------------------------------------------------------------------------
@@ -103,6 +105,8 @@ with st.sidebar:
         "Files not matching a known format are skipped. New formats are added "
         "by the team — share an example and we'll catalog it."
     )
+    st.divider()
+    st.caption(f"v{VERSION}")
 
 uploads = st.file_uploader(
     "Drop statement files here",
