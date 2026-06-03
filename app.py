@@ -19,7 +19,7 @@ import streamlit as st
 
 from normalize import TARGET_COLS, identify_file, run_loader
 
-VERSION = "1.3"
+VERSION = "1.4"
 
 # ---------------------------------------------------------------------------
 # Page config
@@ -60,7 +60,6 @@ def check_password() -> bool:
 # ---------------------------------------------------------------------------
 # Cached registry load
 # ---------------------------------------------------------------------------
-@st.cache_resource
 def load_registry() -> dict:
     return json.loads(Path("registry.json").read_text())
 
@@ -132,14 +131,9 @@ if st.button("Process", type="primary", use_container_width=True):
         buf = f.getvalue()
         agency = identify_file(buf, f.name, registry)
         if agency is None:
-            import fnmatch as _fnmatch
-            pattern_debug = "; ".join(
-                f"{a['name']}: {[p for p in a['identify'].get('filename_patterns', []) if _fnmatch.fnmatch(f.name, p) or _fnmatch.fnmatch(f.name.lower(), p.lower())]}"
-                for a in registry["agencies"]
-            )
             st.session_state["results"][f.name] = {
                 "status": "unknown",
-                "message": f"Format not recognized. filename={f.name!r} size={len(buf)} matches=[{pattern_debug}]",
+                "message": "Format not recognized. We don't have a parser for this agency yet.",
             }
             continue
         try:
