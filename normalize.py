@@ -360,9 +360,10 @@ def _read_header_sample(buf, fname, max_rows=30):
 
 def identify_file(buf, fname, registry):
     candidates = []
+    fname_lower = fname.lower()
     for agency in registry.get("agencies", []):
         for p in agency["identify"].get("filename_patterns", []):
-            if fnmatch.fnmatch(fname, p):
+            if fnmatch.fnmatch(fname, p) or fnmatch.fnmatch(fname_lower, p.lower()):
                 candidates.append(agency)
                 break
     if len(candidates) == 1:

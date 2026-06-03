@@ -86,7 +86,7 @@
       "loader": "rea",
       "identify": {
         "filename_patterns": ["REA.pdf", "rea_*.pdf", "REA_*.pdf", "RE_*.pdf"],
-        "header_fingerprint": ["Relevé", "Référence"]
+        "header_fingerprint": ["reaphoto"]
       },
       "config": {
         "default_country": "France",
