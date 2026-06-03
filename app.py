@@ -46,7 +46,7 @@ def check_password() -> bool:
         return True
     if st.session_state.get("authed"):
         return True
-    pw = st.text_input("Access password", type="password")
+    pw = st.text_input("Access Password", type="password")
     if pw and pw == expected:
         st.session_state["authed"] = True
         st.rerun()
