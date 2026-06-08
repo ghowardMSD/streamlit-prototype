@@ -55,19 +55,6 @@
       }
     },
     {
-      "name": "ZUMA Royalty Output",
-      "loader": "zuma_output",
-      "identify": {
-        "filename_patterns": ["ZUMA Royalty Output.xls", "ZUMA Royalty Output*.xls*"],
-        "header_fingerprint": ["Inv #", "ZUMA filename", "License Amount", "YOURS"]
-      },
-      "config": {
-        "header_row": 1,
-        "default_currency": "USD",
-        "exchange_rate": 1.0
-      }
-    },
-    {
       "name": "ABACA",
       "loader": "abaca",
       "identify": {

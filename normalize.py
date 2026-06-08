@@ -189,29 +189,6 @@ def load_cordon(buf, fname, config, rate):
     return out.reset_index(drop=True)
 
 
-def load_zuma_output(buf, fname, config, rate):
-    raw = pd.read_excel(_bio(buf), sheet_name=0, header=None)
-    header_row = config.get("header_row", 1)
-    headers = raw.iloc[header_row].tolist()
-    data = raw.iloc[header_row + 1:].copy()
-    data.columns = [str(h).strip() if pd.notna(h) else f"col{i}"
-                    for i, h in enumerate(headers)]
-    data = data[data["Inv #"].notna()]
-    out = pd.DataFrame()
-    out["INVOICE NUMBER"] = data["Inv #"].astype(str).str.replace(".0", "", regex=False)
-    out["COUNTRY"] = data["Country"]
-    out["CLIENT"] = data["CLIENT"]
-    out["ZUMA FILE NUMBER"] = data["ZUMA filename"]
-    out["ORIGINAL FILE NUMBER"] = data["Orig filename"]
-    out["DESCRIPTION"] = data["DESCRIPTION"]
-    out["PHOTOGRAPHER"] = data["PHOTOGRAPHER"]
-    out["PHOTOG CODE"] = data["PHOTOGRAPHER"].map(photog_code)
-    out["FOREIGN CURRENCY"] = config.get("default_currency", "USD")
-    out["EXCHANGE RATE"] = config.get("exchange_rate", 1.0)
-    out["AMOUNT IN USD"] = data["License Amount"].map(to_num)
-    return out.reset_index(drop=True)
-
-
 def load_abaca(buf, fname, config, rate):
     rows = []
     invoice_no = ""
@@ -485,7 +462,6 @@ LOADERS = {
     "generic": generic_loader,
     "imago": load_imago,
     "cordon": load_cordon,
-    "zuma_output": load_zuma_output,
     "picvario": load_picvario,
     "contacto": load_contacto,
     "bestimage": load_bestimage,

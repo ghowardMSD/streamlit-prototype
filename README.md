@@ -37,7 +37,7 @@ The version number shown in the sidebar reflects the deployed build — bump
 
 ## Supported formats
 
-The app recognizes ten agency statement formats. Files that don't match a
+The app recognizes nine agency statement formats. Files that don't match a
 known format are flagged as unrecognized and skipped.
 
 ## Adding a format
