@@ -19,7 +19,7 @@ import streamlit as st
 
 from normalize import TARGET_COLS, identify_file, run_loader
 
-VERSION = "1.4"
+VERSION = "1.5"
 
 # ---------------------------------------------------------------------------
 # Page config

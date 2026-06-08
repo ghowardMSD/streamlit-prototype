@@ -92,6 +92,59 @@
         "default_country": "France",
         "default_currency": "EUR"
       }
+    },
+    {
+      "name": "Picvario",
+      "loader": "picvario",
+      "identify": {
+        "filename_patterns": ["Picvario.xlsx", "Picvario*.xlsx", "picvario_*.xlsx"],
+        "header_fingerprint": ["Picvario", "Cost, USD"]
+      },
+      "config": {
+        "header_row": 7,
+        "default_country": "Russia",
+        "default_currency": "USD",
+        "exchange_rate": 1.0
+      }
+    },
+    {
+      "name": "CONTACTO",
+      "loader": "contacto",
+      "identify": {
+        "filename_patterns": ["CONTACTO.xls", "CONTACTO*.xls*", "contacto_*.xls*"],
+        "header_fingerprint": ["CONTACTO", "PUBLICATION"]
+      },
+      "config": {
+        "header_row": 4,
+        "default_country": "Spain",
+        "default_currency": "EUR"
+      }
+    },
+    {
+      "name": "BEST IMAGE",
+      "loader": "bestimage",
+      "identify": {
+        "filename_patterns": ["BEST IMAGE.pdf", "BEST IMAGE*.pdf", "BESTIMAGE*.pdf", "best_image_*.pdf"],
+        "header_fingerprint": ["bestimage"]
+      },
+      "config": {
+        "default_country": "France",
+        "default_currency": "EUR"
+      }
+    },
+    {
+      "name": "DANA PRESS",
+      "loader": "dana",
+      "identify": {
+        "filename_patterns": ["DANA PRESS.pdf", "DANA PRESS*.pdf", "DANA*.pdf", "dana_press_*.pdf"],
+        "header_fingerprint": ["Pay-to Vendor No"]
+      },
+      "config": {
+        "default_country": "Denmark",
+        "default_currency": "USD",
+        "default_client": "DANA PRESS",
+        "exchange_rate": 1.0
+      }
     }
   ]
 }

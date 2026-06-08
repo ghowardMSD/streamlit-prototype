@@ -21,7 +21,7 @@ from typing import Any
 import pandas as pd
 import pdfplumber
 
-ZUMA_FN_RE = re.compile(r"(\d{8}_[a-z]{3}_[a-z]\d{1,3}_\d+(?:\.\w+)?)", re.IGNORECASE)
+ZUMA_FN_RE = re.compile(r"(\d{8}_[a-z]{3}_[a-z]{1,3}\d{1,3}_\d+(?:\.\w+)?)", re.IGNORECASE)
 
 TARGET_COLS = [
     "INVOICE NUMBER", "COUNTRY", "CLIENT", "ZUMA FILE NUMBER",
@@ -324,11 +324,172 @@ def load_rea(buf, fname, config, rate):
     return pd.DataFrame(rows)
 
 
+def load_picvario(buf, fname, config, rate):
+    # Header is at a fixed row; data follows until "Total sales" footer rows.
+    header_row = config.get("header_row", 7)
+    df = pd.read_excel(_bio(buf), sheet_name=0, header=header_row)
+    df.columns = [str(c).strip() for c in df.columns]
+    img = df["Image"].astype(str)
+    # Keep only real image rows (drops "Total sales" / share footer rows).
+    df = df[img.str.extract(ZUMA_FN_RE.pattern, flags=re.IGNORECASE, expand=False).notna()].copy()
+    out = pd.DataFrame(index=df.index)
+    out["INVOICE NUMBER"] = ""
+    out["COUNTRY"] = config.get("default_country", "Russia")
+    out["CLIENT"] = df["Company"].fillna("").astype(str)
+    out["ZUMA FILE NUMBER"] = df["Image"].astype(str).str.extract(
+        ZUMA_FN_RE.pattern, flags=re.IGNORECASE, expand=False).fillna("")
+    out["ORIGINAL FILE NUMBER"] = df["Original"].fillna("").astype(str)
+    out["DESCRIPTION"] = ""
+    out["PHOTOGRAPHER"] = df["Author"].fillna("").astype(str)
+    out["PHOTOG CODE"] = df["Author"].map(photog_code)
+    out["FOREIGN CURRENCY"] = config.get("default_currency", "USD")
+    out["EXCHANGE RATE"] = config.get("exchange_rate", 1.0)
+    out["AMOUNT IN USD"] = df["Cost, USD"].map(to_num) * config.get("exchange_rate", 1.0)
+    return out.reset_index(drop=True)
+
+
+def load_contacto(buf, fname, config, rate):
+    raw = pd.read_excel(_bio(buf), sheet_name=0, header=None)
+    header_row = config.get("header_row", 4)
+    data = raw.iloc[header_row + 1:].copy()
+    # Columns by position: Publication, Subject, Photographer, Total, Share, Zuma file.
+    data.columns = [f"c{i}" for i in range(data.shape[1])]
+    fn = data["c5"].astype(str)
+    data = data[fn.str.extract(ZUMA_FN_RE.pattern, flags=re.IGNORECASE, expand=False).notna()].copy()
+    out = pd.DataFrame(index=data.index)
+    out["INVOICE NUMBER"] = ""
+    out["COUNTRY"] = config.get("default_country", "Spain")
+    out["CLIENT"] = data["c0"].fillna("").astype(str)
+    out["ZUMA FILE NUMBER"] = data["c5"].astype(str).str.extract(
+        ZUMA_FN_RE.pattern, flags=re.IGNORECASE, expand=False).fillna("")
+    out["ORIGINAL FILE NUMBER"] = ""
+    out["DESCRIPTION"] = data["c1"].fillna("").astype(str)
+    out["PHOTOGRAPHER"] = data["c2"].fillna("").astype(str)
+    out["PHOTOG CODE"] = data["c2"].map(photog_code)
+    out["FOREIGN CURRENCY"] = config.get("default_currency", "EUR")
+    out["EXCHANGE RATE"] = rate
+    out["AMOUNT IN USD"] = data["c3"].map(to_num) * rate
+    return out.reset_index(drop=True)
+
+
+def _group_lines(words, tol=2):
+    """Group words into visual lines bucketed by `top`, each sorted left-to-right."""
+    buckets = defaultdict(list)
+    for w in words:
+        buckets[round(w["top"] / tol) * tol].append(w)
+    return [sorted(ws, key=lambda w: w["x0"]) for _, ws in sorted(buckets.items())]
+
+
+def load_bestimage(buf, fname, config, rate):
+    # Wrapped multi-line table. Columns identified by x0; each record begins on the
+    # line carrying the country + Montant/%/Droits values, then wraps below.
+    cols = {
+        "client": (0, 76), "photo": (76, 143), "ref": (143, 210),
+        "sujet": (210, 345), "auteur": (345, 390), "montant": (435, 480),
+    }
+    rows = []
+    invoice_no = ""
+
+    def is_start(ln):
+        has_montant = any(435 <= w["x0"] < 480 and to_num(w["text"]) is not None for w in ln)
+        has_droits = any(w["x0"] >= 524 and ("€" in w["text"] or to_num(w["text"]) is not None) for w in ln)
+        return has_montant and has_droits
+
+    def flush(rec):
+        if not rec:
+            return
+        col_words = {k: [w for ln in rec for w in ln if lo <= w["x0"] < hi]
+                     for k, (lo, hi) in cols.items()}
+        # Filename and photo-number columns wrap vertically — join without spaces.
+        ref_join = "".join(w["text"] for w in col_words["ref"])
+        m = ZUMA_FN_RE.search(ref_join)
+        montant = next((to_num(w["text"]) for w in rec[0]
+                        if 435 <= w["x0"] < 480 and to_num(w["text"]) is not None), None)
+        auteur = " ".join(w["text"] for w in col_words["auteur"]).strip()
+        rows.append({
+            "INVOICE NUMBER": invoice_no,
+            "COUNTRY": config.get("default_country", "France"),
+            "CLIENT": " ".join(w["text"] for w in col_words["client"]).strip(),
+            "ZUMA FILE NUMBER": m.group(1) if m else ref_join,
+            "ORIGINAL FILE NUMBER": "".join(w["text"] for w in col_words["photo"]),
+            "DESCRIPTION": " ".join(w["text"] for w in col_words["sujet"]).strip(),
+            "PHOTOGRAPHER": auteur,
+            "PHOTOG CODE": photog_code(auteur),
+            "FOREIGN CURRENCY": config.get("default_currency", "EUR"),
+            "EXCHANGE RATE": rate,
+            "AMOUNT IN USD": (montant or 0) * rate,
+        })
+
+    with pdfplumber.open(_bio(buf)) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            if not invoice_no:
+                m = re.search(r"N[°o]\s*(\d+)", text)
+                if m:
+                    invoice_no = m.group(1)
+            cur = None
+            for ln in _group_lines(page.extract_words(use_text_flow=False)):
+                if is_start(ln):
+                    flush(cur)
+                    cur = [ln]
+                elif cur is not None:
+                    # Stop accumulating at a totals/footer line outside the data columns.
+                    if any("total" in w["text"].lower() for w in ln):
+                        flush(cur)
+                        cur = None
+                    else:
+                        cur.append(ln)
+            flush(cur)
+    return pd.DataFrame(rows)
+
+
+def load_dana(buf, fname, config, rate):
+    # Wrapped multi-line table, but every field we need sits on the record-start
+    # line (the one ending in an amount + "$"). Amounts are already USD.
+    rows = []
+    invoice_no = ""
+    with pdfplumber.open(_bio(buf)) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            if not invoice_no:
+                m = re.search(r"Sales Report No\.?\s*(\S+)", text)
+                if m:
+                    invoice_no = m.group(1)
+            for ln in _group_lines(page.extract_words(use_text_flow=False)):
+                amt_w = next((w for w in ln if w["x0"] > 530 and to_num(w["text"]) is not None), None)
+                has_dollar = any(w["text"] == "$" and w["x0"] > 555 for w in ln)
+                if amt_w is None or not has_dollar:
+                    continue
+                line_text = " ".join(w["text"] for w in ln)
+                fn = ZUMA_FN_RE.search(line_text)
+                photog = " ".join(w["text"] for w in ln if 108 <= w["x0"] < 196).strip(" /")
+                media_no = next((w["text"] for w in ln if 196 <= w["x0"] < 233 and to_num(w["text"]) is not None), "")
+                ref_no = next((w["text"] for w in ln if 450 <= w["x0"] < 520 and to_num(w["text"]) is not None), "")
+                rows.append({
+                    "INVOICE NUMBER": invoice_no,
+                    "COUNTRY": config.get("default_country", "Denmark"),
+                    "CLIENT": config.get("default_client", "DANA PRESS"),
+                    "ZUMA FILE NUMBER": fn.group(1) if fn else "",
+                    "ORIGINAL FILE NUMBER": ref_no,
+                    "DESCRIPTION": "",
+                    "PHOTOGRAPHER": photog,
+                    "PHOTOG CODE": photog_code(photog),
+                    "FOREIGN CURRENCY": config.get("default_currency", "USD"),
+                    "EXCHANGE RATE": config.get("exchange_rate", 1.0),
+                    "AMOUNT IN USD": (to_num(amt_w["text"]) or 0) * config.get("exchange_rate", 1.0),
+                })
+    return pd.DataFrame(rows)
+
+
 LOADERS = {
     "generic": generic_loader,
     "imago": load_imago,
     "cordon": load_cordon,
     "zuma_output": load_zuma_output,
+    "picvario": load_picvario,
+    "contacto": load_contacto,
+    "bestimage": load_bestimage,
+    "dana": load_dana,
     "abaca": load_abaca,
     "rea": load_rea,
 }
